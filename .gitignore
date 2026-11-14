@@ -13,7 +13,15 @@ packages/db/node_modules/
 
 # env files
 .env
-.env*.local
+.env.*
+!.env.example
+!.env.*.example
+
+# uploaded exam files and user data
+/backend/uploads/
+
+# test output
+coverage/
 
 # misc
 *.tsbuildinfo

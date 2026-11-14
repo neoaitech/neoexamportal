@@ -37,6 +37,7 @@ export interface WorkspacePage {
   imageWidth: number;
   imageHeight: number;
   isBlank: boolean;
+  isReviewed: boolean;
   annotations: Annotation[];
 }
 
@@ -62,4 +63,26 @@ export interface WorkspaceQuestion {
 export interface StepMark {
   attemptStatus: AttemptStatus | null; // null = not yet marked at all
   marksAwarded: number | null;
+}
+
+// The evaluator-uploaded question paper for the script being evaluated.
+export interface WorkspaceQuestionPaper {
+  title: string;
+  totalMarks: number;
+  fileName: string | null;
+  fileMime: string | null;
+  fileUrl: string | null;
+}
+
+// Marking scheme as edited in the upload wizard (no ids yet).
+export interface SchemeStepInput {
+  description: string;
+  maxMarks: number;
+}
+
+export interface SchemeQuestionInput {
+  questionNumber: string;
+  maxMarks: number;
+  optionGroup: string | null;
+  steps: SchemeStepInput[];
 }

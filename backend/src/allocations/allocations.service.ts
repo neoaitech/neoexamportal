@@ -7,6 +7,7 @@ import {
 import type { AttemptStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { AuthenticatedUser } from '../auth/types.js';
+import { StorageService } from '../storage/storage.service.js';
 import type { CreateAnnotationDto } from './dto/create-annotation.dto.js';
 import type { SetMarkDto } from './dto/set-mark.dto.js';
 
@@ -19,7 +20,10 @@ interface AnnotationData {
 
 @Injectable()
 export class AllocationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storage: StorageService,
+  ) {}
 
   async findMineForEvaluator(userId: string) {
     const allocations = await this.prisma.allocation.findMany({
@@ -37,6 +41,37 @@ export class AllocationsService {
     }));
   }
 
+  // Lets an evaluator remove a script they uploaded themselves (e.g. a wrong
+  // upload) before it is submitted. Admin-allocated scripts and anything
+  // submitted/locked are off limits.
+  async deleteUploaded(allocationId: string, user: AuthenticatedUser) {
+    const allocation = await this.getMutableOwnedAllocation(allocationId, user);
+    const script = await this.prisma.answerScript.findUnique({
+      where: { id: allocation.answerScriptId },
+      include: { pages: true, allocations: { select: { id: true } } },
+    });
+    if (!script) throw new NotFoundException('Allocation not found');
+
+    const uploadedByUser = await this.prisma.questionPaper.count({
+      where: { examId: script.examId, createdById: user.userId },
+    });
+    if (uploadedByUser === 0 || script.allocations.length > 1) {
+      throw new ForbiddenException('Only scripts you uploaded yourself can be deleted');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.annotation.deleteMany({ where: { allocationId } });
+      await tx.mark.deleteMany({ where: { allocationId } });
+      await tx.auditLog.deleteMany({ where: { allocationId } });
+      await tx.allocation.delete({ where: { id: allocationId } });
+      await tx.studentScriptMap.deleteMany({ where: { answerScriptId: script.id } });
+      await tx.scriptPage.deleteMany({ where: { answerScriptId: script.id } });
+      await tx.answerScript.delete({ where: { id: script.id } });
+    });
+    await Promise.all(script.pages.map((p) => this.storage.remove(p.imageUrl)));
+    return { id: allocationId };
+  }
+
   async getDetail(allocationId: string, user: AuthenticatedUser) {
     const allocation = await this.prisma.allocation.findUnique({
       where: { id: allocationId },
@@ -49,7 +84,7 @@ export class AllocationsService {
                   include: {
                     questions: {
                       include: { steps: { orderBy: { stepNumber: 'asc' } } },
-                      orderBy: { questionNumber: 'asc' },
+                      orderBy: [{ sortOrder: 'asc' }, { questionNumber: 'asc' }],
                     },
                   },
                 },
@@ -86,13 +121,17 @@ export class AllocationsService {
       })),
     }));
 
-    const pages = allocation.answerScript.pages.map((p) => ({
+    const signedPageUrls = await Promise.all(
+      allocation.answerScript.pages.map((p) => this.storage.signedUrl(p.imageUrl, user.tenantId)),
+    );
+    const pages = allocation.answerScript.pages.map((p, i) => ({
       id: p.id,
       pageNumber: p.pageNumber,
-      imageUrl: p.imageUrl,
+      imageUrl: signedPageUrls[i],
       imageWidth: p.imageWidth,
       imageHeight: p.imageHeight,
       isBlank: p.isBlank,
+      isReviewed: p.isReviewed,
       annotations: p.annotations.map((a) => {
         const data = a.data as unknown as AnnotationData;
         return {
@@ -121,6 +160,17 @@ export class AllocationsService {
       status: allocation.status,
       scriptCode: allocation.answerScript.scriptCode,
       examName: allocation.answerScript.exam.name,
+      questionPaper: questionPaper
+        ? {
+            title: questionPaper.title,
+            totalMarks: Number(questionPaper.totalMarks),
+            fileName: questionPaper.fileName,
+            fileMime: questionPaper.fileMime,
+            fileUrl: questionPaper.fileKey
+              ? await this.storage.signedUrl(questionPaper.fileKey, user.tenantId)
+              : null,
+          }
+        : null,
       pages,
       questions,
       marks,
@@ -140,6 +190,21 @@ export class AllocationsService {
     }
     await this.prisma.scriptPage.update({ where: { id: pageId }, data: { isBlank } });
     return { id: pageId, isBlank };
+  }
+
+  async setPageReviewed(
+    allocationId: string,
+    pageId: string,
+    user: AuthenticatedUser,
+    isReviewed: boolean,
+  ) {
+    const allocation = await this.getMutableOwnedAllocation(allocationId, user);
+    const page = await this.prisma.scriptPage.findUnique({ where: { id: pageId } });
+    if (!page || page.tenantId !== user.tenantId || page.answerScriptId !== allocation.answerScriptId) {
+      throw new NotFoundException('Page not found');
+    }
+    await this.prisma.scriptPage.update({ where: { id: pageId }, data: { isReviewed } });
+    return { id: pageId, isReviewed };
   }
 
   async addAnnotation(
@@ -302,14 +367,21 @@ export class AllocationsService {
         : Promise.resolve([]),
       this.prisma.scriptPage.findMany({
         where: { answerScriptId: allocation.answerScriptId },
-        select: { id: true, isBlank: true, _count: { select: { annotations: true } } },
+        select: {
+          id: true,
+          isBlank: true,
+          isReviewed: true,
+          _count: { select: { annotations: true } },
+        },
       }),
       this.prisma.mark.findMany({ where: { allocationId } }),
     ]);
 
     const markedStepIds = new Set(marks.map((m) => m.rubricStepId));
     const unresolvedSteps = steps.filter((s) => !markedStepIds.has(s.id)).length;
-    const unreviewedPages = pages.filter((p) => !p.isBlank && p._count.annotations === 0).length;
+    const unreviewedPages = pages.filter(
+      (p) => !p.isBlank && !p.isReviewed && p._count.annotations === 0,
+    ).length;
 
     if (unresolvedSteps > 0 || unreviewedPages > 0) {
       throw new BadRequestException({

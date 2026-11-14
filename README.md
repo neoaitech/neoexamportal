@@ -212,6 +212,6 @@ npm run prisma:seed
 
 ## Project status
 
-Built so far: data model (Prisma schema for tenants, exams, rubrics, scripts, allocations, marks, annotations, audit trail), full frontend app shell (role-based dashboards for Admin/Chief Evaluator/Evaluator), the evaluation workspace (PDF-page canvas with tick/cross/note annotations + step-wise rubric scoring, including OR-question logic), and a real backend (JWT + TOTP 2FA auth, RBAC, and the allocation/annotation/marking/submission API) — all wired together end-to-end, not just mocked.
+Built so far: data model (Prisma schema for tenants, exams, rubrics, scripts, allocations, marks, annotations, audit trail), role-based dashboards, and an evaluation workspace with answer-page annotations and step-wise rubric scoring. Evaluators can upload a question paper, get suggested question numbers and marks extracted locally from text-based PDFs or DOCX files, review and edit the marking scheme, then upload answer sheets and grade them manually in the workspace. Uploaded question papers can be viewed alongside the answer script.
 
-Not yet built: real file upload/scanning pipeline (scripts are seeded with placeholder page images), moderation/re-evaluation flows for Chief Evaluators, and admin CRUD screens (exam/allocation/user management currently display data but don't yet write back).
+Limitations and remaining work: extraction is pattern-based and suggestions must be checked before saving; scanned PDFs and image question papers are not OCR'd and need manual scheme entry. Answer sheets are not automatically graded. Moderation/re-evaluation flows for Chief Evaluators and admin CRUD screens (exam/allocation/user management) are also not yet built.

@@ -63,7 +63,7 @@ export function getValidationIssues(
 }
 
 export function getUnreviewedPages(pages: WorkspacePage[]): WorkspacePage[] {
-  return pages.filter((p) => !p.isBlank && p.annotations.length === 0);
+  return pages.filter((p) => !p.isBlank && !p.isReviewed && p.annotations.length === 0);
 }
 
 // When resuming an in-progress evaluation, infer which side of each OR group

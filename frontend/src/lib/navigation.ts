@@ -22,6 +22,7 @@ export const roleLabels: Record<Role, string> = {
 export interface NavItem {
   label: string;
   href: string;
+  description?: string;
 }
 
 export const navItemsByRole: Record<Role, NavItem[]> = {
@@ -41,5 +42,16 @@ export const navItemsByRole: Record<Role, NavItem[]> = {
     { label: "Overview", href: "/chief-evaluator" },
     { label: "Moderation queue", href: "/chief-evaluator/moderation" },
   ],
-  EVALUATOR: [{ label: "My scripts", href: "/evaluator" }],
+  EVALUATOR: [
+    {
+      label: "Assigned scripts",
+      href: "/evaluator",
+      description: "Continue marking",
+    },
+    {
+      label: "Upload scripts",
+      href: "/evaluator/new",
+      description: "Start an evaluation",
+    },
+  ],
 };

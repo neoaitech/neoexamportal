@@ -15,6 +15,7 @@ import { AllocationsService } from './allocations.service.js';
 import { CreateAnnotationDto } from './dto/create-annotation.dto.js';
 import { SetMarkDto } from './dto/set-mark.dto.js';
 import { SetPageBlankDto } from './dto/set-page-blank.dto.js';
+import { SetPageReviewedDto } from './dto/set-page-reviewed.dto.js';
 
 @UseGuards(JwtAuthGuard)
 @Controller('allocations')
@@ -31,6 +32,11 @@ export class AllocationsController {
     return this.allocationsService.getDetail(id, user);
   }
 
+  @Delete(':id')
+  deleteUploaded(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.allocationsService.deleteUploaded(id, user);
+  }
+
   @Patch(':id/pages/:pageId')
   setPageBlank(
     @Param('id') id: string,
@@ -39,6 +45,16 @@ export class AllocationsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.allocationsService.setPageBlank(id, pageId, user, dto.isBlank);
+  }
+
+  @Patch(':id/pages/:pageId/review')
+  setPageReviewed(
+    @Param('id') id: string,
+    @Param('pageId') pageId: string,
+    @Body() dto: SetPageReviewedDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.allocationsService.setPageReviewed(id, pageId, user, dto.isReviewed);
   }
 
   @Post(':id/pages/:pageId/annotations')

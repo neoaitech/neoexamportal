@@ -6,6 +6,7 @@ import type {
   StepMark,
   WorkspacePage,
   WorkspaceQuestion,
+  WorkspaceQuestionPaper,
 } from "@/lib/evaluation-types";
 import { inferSelectedOrOption } from "@/lib/evaluation-selectors";
 import type { AllocationStatus, AttemptStatus } from "@/lib/types";
@@ -27,6 +28,7 @@ interface EvaluationState {
   allocationStatus: AllocationStatus | null;
   scriptCode: string | null;
   examName: string | null;
+  questionPaper: WorkspaceQuestionPaper | null;
   pages: WorkspacePage[];
   questions: WorkspaceQuestion[];
   currentPageIndex: number;
@@ -43,6 +45,7 @@ interface EvaluationState {
   deleteAnnotation: (pageId: string, annotationId: string) => Promise<void>;
   selectAnnotation: (id: string | null) => void;
   setPageBlank: (pageId: string, isBlank: boolean) => Promise<void>;
+  setPageReviewed: (pageId: string, isReviewed: boolean) => Promise<void>;
   setStepMark: (
     stepId: string,
     attemptStatus: AttemptStatus,
@@ -64,6 +67,7 @@ export const useEvaluationStore = create<EvaluationState>((set, get) => ({
   allocationStatus: null,
   scriptCode: null,
   examName: null,
+  questionPaper: null,
   pages: [],
   questions: [],
   currentPageIndex: 0,
@@ -89,6 +93,7 @@ export const useEvaluationStore = create<EvaluationState>((set, get) => ({
         allocationStatus: detail.status,
         scriptCode: detail.scriptCode,
         examName: detail.examName,
+        questionPaper: detail.questionPaper,
         pages: detail.pages,
         questions: detail.questions,
         marks: detail.marks,
@@ -151,6 +156,19 @@ export const useEvaluationStore = create<EvaluationState>((set, get) => ({
       await api.setPageBlank(accessToken, allocationId, pageId, isBlank);
       set((state) => ({
         pages: state.pages.map((page) => (page.id === pageId ? { ...page, isBlank } : page)),
+      }));
+    } catch (err) {
+      set({ error: errorMessage(err) });
+    }
+  },
+
+  setPageReviewed: async (pageId, isReviewed) => {
+    const { allocationId, accessToken } = get();
+    if (!allocationId || !accessToken) return;
+    try {
+      await api.setPageReviewed(accessToken, allocationId, pageId, isReviewed);
+      set((state) => ({
+        pages: state.pages.map((page) => (page.id === pageId ? { ...page, isReviewed } : page)),
       }));
     } catch (err) {
       set({ error: errorMessage(err) });

@@ -231,8 +231,8 @@ export function RubricPanel() {
           <Alert severity="warning" onClose={() => setShowIssues(false)}>
             {unreviewedPages.length > 0 && (
               <Typography variant="body2">
-                {unreviewedPages.length} page(s) have not been reviewed or
-                marked blank.
+                {unreviewedPages.length} page(s) still need review. Open each page and select
+                &quot;Mark page reviewed&quot;, add a grading annotation, or mark it blank.
               </Typography>
             )}
             {validationIssues.length > 0 && (

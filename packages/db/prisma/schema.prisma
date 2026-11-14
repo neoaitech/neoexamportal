@@ -84,6 +84,15 @@ model QuestionPaper {
   totalMarks Decimal  @map("total_marks") @db.Decimal(6, 2)
   createdAt  DateTime @default(now()) @map("created_at")
 
+  // The evaluator-uploaded paper (PDF/image/DOCX). Storage key, not a URL.
+  // Null for papers created without an upload (e.g. seed data).
+  fileKey  String? @map("file_key")
+  fileName String? @map("file_name")
+  fileMime String? @map("file_mime")
+
+  // Uploader; evaluators only see papers they created.
+  createdById String? @map("created_by_id")
+
   questions Question[]
 
   @@index([tenantId])
@@ -97,6 +106,8 @@ model Question {
   questionPaperId String   @map("question_paper_id")
   questionPaper   QuestionPaper @relation(fields: [questionPaperId], references: [id])
   questionNumber  String   @map("question_number") // e.g. "Q5", "Q5(a)"
+  // Display order within the paper (questionNumber strings do not sort naturally: "Q10" < "Q2").
+  sortOrder       Int      @default(0) @map("sort_order")
 
   // Questions sharing the same (parentQuestionId, optionGroup) are mutually
   // exclusive alternatives (e.g. "attempt 5(a) OR 5(b)"). The scoring engine
@@ -227,6 +238,7 @@ model ScriptPage {
   imageWidth     Int          @map("image_width")
   imageHeight    Int          @map("image_height")
   isBlank        Boolean      @default(false) @map("is_blank")
+  isReviewed     Boolean      @default(false) @map("is_reviewed")
 
   annotations Annotation[]
 

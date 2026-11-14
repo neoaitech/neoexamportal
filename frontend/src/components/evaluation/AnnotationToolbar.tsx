@@ -21,6 +21,7 @@ export function AnnotationToolbar({ page }: { page: WorkspacePage }) {
   const selectedAnnotationId = useEvaluationStore((s) => s.selectedAnnotationId);
   const deleteAnnotation = useEvaluationStore((s) => s.deleteAnnotation);
   const setPageBlank = useEvaluationStore((s) => s.setPageBlank);
+  const setPageReviewed = useEvaluationStore((s) => s.setPageReviewed);
 
   return (
     <Stack
@@ -68,6 +69,15 @@ export function AnnotationToolbar({ page }: { page: WorkspacePage }) {
       </Button>
 
       <Divider orientation="vertical" flexItem />
+
+      <Button
+        size="small"
+        variant={page.isReviewed ? "contained" : "outlined"}
+        color={page.isReviewed ? "success" : "inherit"}
+        onClick={() => setPageReviewed(page.id, !page.isReviewed)}
+      >
+        {page.isReviewed ? "Page reviewed" : "Mark page reviewed"}
+      </Button>
 
       <Button
         size="small"

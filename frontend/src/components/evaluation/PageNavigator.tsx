@@ -37,7 +37,7 @@ export function PageNavigator() {
 
       <Stack direction="row" spacing={0.5} sx={{ ml: 2, flexWrap: "wrap" }}>
         {pages.map((page, index) => {
-          const reviewed = page.isBlank || page.annotations.length > 0;
+          const reviewed = page.isBlank || page.isReviewed || page.annotations.length > 0;
           return (
             <Chip
               key={page.id}

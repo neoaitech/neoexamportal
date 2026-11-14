@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
+import Tab from "@mui/material/Tab";
+import Tabs from "@mui/material/Tabs";
 import Typography from "@mui/material/Typography";
 import { StatusChip } from "@/components/StatusChip";
 import { useAuth } from "@/lib/AuthContext";
@@ -13,10 +15,12 @@ import { useEvaluationStore } from "@/store/evaluationStore";
 import { AnnotationToolbar } from "./AnnotationToolbar";
 import { PageCanvas } from "./PageCanvas";
 import { PageNavigator } from "./PageNavigator";
+import { QuestionPaperView } from "./QuestionPaperView";
 import { RubricPanel } from "./RubricPanel";
 
 export function EvaluationWorkspace({ allocationId }: { allocationId: string }) {
   const { accessToken } = useAuth();
+  const [sideTab, setSideTab] = useState<"rubric" | "paper">("rubric");
   const initialize = useEvaluationStore((s) => s.initialize);
   const status = useEvaluationStore((s) => s.status);
   const loadError = useEvaluationStore((s) => s.error);
@@ -82,8 +86,37 @@ export function EvaluationWorkspace({ allocationId }: { allocationId: string }) 
         </Stack>
 
         <Box sx={{ flex: "1 1 32%", minWidth: 320 }}>
-          <Paper variant="outlined" sx={{ height: "100%", p: 2 }}>
-            <RubricPanel />
+          <Paper
+            variant="outlined"
+            sx={{ height: "100%", p: 2, display: "flex", flexDirection: "column", minHeight: 0 }}
+          >
+            <Tabs
+              value={sideTab}
+              onChange={(_, value: "rubric" | "paper") => setSideTab(value)}
+              aria-label="Evaluation reference"
+              sx={{ mb: 1.5 }}
+            >
+              <Tab
+                id="evaluation-tab-rubric"
+                aria-controls="evaluation-panel-rubric"
+                value="rubric"
+                label="Rubric & scoring"
+              />
+              <Tab
+                id="evaluation-tab-paper"
+                aria-controls="evaluation-panel-paper"
+                value="paper"
+                label="Question paper"
+              />
+            </Tabs>
+            <Box
+              role="tabpanel"
+              id={`evaluation-panel-${sideTab}`}
+              aria-labelledby={`evaluation-tab-${sideTab}`}
+              sx={{ flex: 1, minHeight: 0, overflow: "auto" }}
+            >
+              {sideTab === "rubric" ? <RubricPanel /> : <QuestionPaperView />}
+            </Box>
           </Paper>
         </Box>
       </Stack>

@@ -1,4 +1,11 @@
-import type { Annotation, NewAnnotation, WorkspacePage, WorkspaceQuestion } from "./evaluation-types";
+import type {
+  Annotation,
+  NewAnnotation,
+  SchemeQuestionInput,
+  WorkspacePage,
+  WorkspaceQuestion,
+  WorkspaceQuestionPaper,
+} from "./evaluation-types";
 import type { AllocationStatus, AttemptStatus, Role } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
@@ -46,6 +53,7 @@ export interface AllocationDetailResponse {
   status: AllocationStatus;
   scriptCode: string;
   examName: string;
+  questionPaper: WorkspaceQuestionPaper | null;
   pages: WorkspacePage[];
   questions: WorkspaceQuestion[];
   marks: Record<string, { attemptStatus: AttemptStatus; marksAwarded: number | null }>;
@@ -61,7 +69,7 @@ async function request<T>(
     response = await fetch(`${API_URL}${path}`, {
       ...init,
       headers: {
-        "Content-Type": "application/json",
+        ...(init?.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         ...init?.headers,
       },
@@ -109,10 +117,25 @@ export const api = {
   getAllocationDetail: (accessToken: string, allocationId: string) =>
     request<AllocationDetailResponse>(`/allocations/${allocationId}`, {}, accessToken),
 
+  deleteAllocation: (accessToken: string, allocationId: string) =>
+    request<{ id: string }>(`/allocations/${allocationId}`, { method: "DELETE" }, accessToken),
+
   setPageBlank: (accessToken: string, allocationId: string, pageId: string, isBlank: boolean) =>
     request<{ id: string; isBlank: boolean }>(
       `/allocations/${allocationId}/pages/${pageId}`,
       { method: "PATCH", body: JSON.stringify({ isBlank }) },
+      accessToken,
+    ),
+
+  setPageReviewed: (
+    accessToken: string,
+    allocationId: string,
+    pageId: string,
+    isReviewed: boolean,
+  ) =>
+    request<{ id: string; isReviewed: boolean }>(
+      `/allocations/${allocationId}/pages/${pageId}/review`,
+      { method: "PATCH", body: JSON.stringify({ isReviewed }) },
       accessToken,
     ),
 
@@ -159,6 +182,51 @@ export const api = {
     request<{ id: string; status: AllocationStatus; totalMarksAwarded: number }>(
       `/allocations/${allocationId}/submit`,
       { method: "POST" },
+      accessToken,
+    ),
+};
+
+export interface PaperSummaryResponse {
+  id: string;
+  examName: string;
+  subjectCode: string;
+  questionCount: number;
+  totalMarks: number;
+  createdAt: string;
+}
+
+export interface PaperDetailResponse {
+  id: string;
+  examName: string;
+  subjectCode: string;
+  academicYear: string;
+  totalMarks: number;
+  fileName: string | null;
+  fileMime: string | null;
+  fileUrl: string | null;
+  questions: SchemeQuestionInput[];
+}
+
+export const papersApi = {
+  list: (accessToken: string) => request<PaperSummaryResponse[]>("/papers/mine", {}, accessToken),
+
+  get: (accessToken: string, paperId: string) =>
+    request<PaperDetailResponse>(`/papers/${paperId}`, {}, accessToken),
+
+  create: (accessToken: string, form: FormData) =>
+    request<{ id: string }>("/papers", { method: "POST", body: form }, accessToken),
+
+  setScheme: (accessToken: string, paperId: string, questions: SchemeQuestionInput[]) =>
+    request<{ id: string; totalMarks: number }>(
+      `/papers/${paperId}/scheme`,
+      { method: "PUT", body: JSON.stringify({ questions }) },
+      accessToken,
+    ),
+
+  uploadScript: (accessToken: string, paperId: string, form: FormData) =>
+    request<{ allocationId: string; scriptCode: string }>(
+      `/papers/${paperId}/scripts`,
+      { method: "POST", body: form },
       accessToken,
     ),
 };
